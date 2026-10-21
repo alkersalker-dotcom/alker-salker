@@ -139,9 +139,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       {/* TOP FLOATING / HEADER BAR - Elegan & Keren dengan Tombol Download App PWA */}
       <header className="w-full max-w-5xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between z-20">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-sm shadow-indigo-500/30 border border-white/40">
-            <Wrench className="w-4 h-4 text-emerald-300 stroke-[2.2]" />
-          </div>
+         <img src="/PT%20KES.jpg" alt="PT KES" className="w-8 h-8 rounded-full object-cover border border-white shadow-sm" />
           <div>
             <h1 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center space-x-1.5">
               <span>CEK ALAT KERJA</span>
