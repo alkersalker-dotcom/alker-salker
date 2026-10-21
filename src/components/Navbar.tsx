@@ -79,10 +79,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between py-3 gap-3 flex-wrap lg:flex-nowrap">
           {/* Logo & Identity */}
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center shadow-lg shadow-indigo-500/25 border border-indigo-400/30">
-              <Warehouse className="w-5 h-5 text-white" />
-            </div>
-            <div>
+            <img src="/logo-kes.png" alt="PT KES" className="w-10 h-10 rounded-full bg-white object-contain p-1 shadow-md" />            <div>
               <div className="flex items-center space-x-2">
                 <span className="text-base font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">
                   LOGISTIK GUDANG
