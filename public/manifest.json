@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "Cek Alat Kerja - Monitoring Alker",
+  "short_name": "Cek Alker",
+  "description": "Sistem Monitoring Alat Kerja & Inventaris Teknisi Assurance & Provisioning",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#251e7a",
+  "background_color": "#f8fafc",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

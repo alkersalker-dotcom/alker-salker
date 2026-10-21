@@ -1,0 +1,7 @@
+{
+  "name": "Sistem Keluar Masuk Barang",
+  "description": "Aplikasi manajemen logistik dan inventaris barang keluar masuk, pelacakan stok real-time, pencatatan teknisi, dan cetak surat jalan.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cek Alat Kerja - Manajemen Alat & Inventaris</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS (xlsx) for full Excel export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Custom Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Setup & Initialization complying with mandatory path and auth rules
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cek-alker-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "demo-key",
+            authDomain: "demo.firebaseapp.com",
+            projectId: "demo-project",
+            storageBucket: "demo.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:demo"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.auth = auth;
+        window.appId = appId;
+        window.cloudFunctions = { collection, doc, setDoc, deleteDoc, onSnapshot, signInAnonymously, signInWithCustomToken };
+    </script>
+
+    <link rel="manifest" id="manifestPlaceholder">
+    <meta name="theme-color" content="#4338ca">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Cek Alker">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2942/2942544.png">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-indigo-700 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+            <div class="flex items-center justify-between gap-2 sm:gap-4 flex-wrap md:flex-nowrap">
+                
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3 shrink-0">
+                    <div class="p-2 bg-indigo-600/90 rounded-xl shadow-inner border border-indigo-400/30">
+                        <i data-lucide="wrench" class="w-5 h-5 sm:w-6 sm:h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base sm:text-lg font-bold tracking-tight leading-tight">Cek Alat Kerja</h1>
+                        <p class="text-[11px] text-indigo-200 hidden sm:block">Sistem Monitoring Alat Kerja</p>
+                    </div>
+                </div>
+
+                <!-- Tab Menu Bar & Sync Status -->
+                <div class="flex items-center gap-2">
+                    <div id="navTabContainer" class="hidden md:flex items-center bg-indigo-800/80 p-1 rounded-xl border border-indigo-500/30">
+                        <button id="tabDashboard" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 bg-white text-indigo-700 shadow-sm">
+                            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+                            <span>Kelola Alker</span>
+                        </button>
+                    </div>
+
+                    <!-- Cloud Sync Status Indicator -->
+                    <div id="syncIndicator" class="flex items-center space-x-1.5 bg-indigo-900/60 px-2.5 py-1 rounded-full text-[11px] text-emerald-300 border border-emerald-500/30">
+                        <span id="syncDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span id="syncText">Cloud Connected</span>
+                    </div>
+                </div>
+
+                <!-- User Info & Action Controls -->
+                <div class="flex items-center space-x-2 shrink-0 ml-auto md:ml-0">
+                    <!-- Install PWA Button -->
+                    <button id="btnInstallPWA" class="bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-semibold px-2.5 py-1.5 rounded-lg shadow-sm transition flex items-center space-x-1.5 text-xs border border-sky-400/40">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span class="hidden sm:inline">Download App</span>
+                        <span class="bg-white/20 text-white text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">PWA</span>
+                    </button>
+
+                    <!-- User Info Card -->
+                    <div id="userInfoContainer" class="hidden flex items-center space-x-2 bg-indigo-800/80 px-2.5 py-1 rounded-lg border border-indigo-500/40 text-xs">
+                        <div id="userAvatar" class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white text-[11px] shrink-0">
+                            T
+                        </div>
+                        <div class="text-left hidden lg:block">
+                            <div class="flex items-center space-x-1">
+                                <p id="userNameDisplay" class="font-bold text-white leading-none text-xs max-w-[120px] truncate">Nama Teknisi</p>
+                                <span id="adminBadge" class="hidden bg-amber-400 text-slate-900 font-black text-[8px] px-1 py-0.2 rounded uppercase">ADMIN</span>
+                            </div>
+                            <p id="userUnitDisplay" class="text-[9px] text-indigo-200">UNIT</p>
+                        </div>
+                        <button id="btnLogout" class="ml-1 p-1 text-rose-200 hover:text-white hover:bg-rose-500/30 rounded transition flex items-center" title="Keluar / Logout">
+                            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Add Data Button -->
+                    <button id="btnOpenModal" class="hidden bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-medium px-3 py-1.5 rounded-lg shadow-md transition flex items-center space-x-1.5 text-xs border border-emerald-400/30">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Tambah Data</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT VIEW: VIEW 1 - HALAMAN MUKA (AUTHENTICATION LANDING PAGE) -->
+    <div id="viewHome" class="flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+            <!-- Header Banner Card -->
+            <div class="bg-gradient-to-r from-indigo-700 via-indigo-800 to-indigo-900 p-6 sm:p-8 text-white text-center relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
+                    <i data-lucide="shield-check" class="w-40 h-40 text-white"></i>
+                </div>
+                <div class="relative z-10 space-y-2">
+                    <div class="inline-flex items-center justify-center p-3 bg-white/10 rounded-2xl backdrop-blur-md mb-2 border border-white/20 shadow-inner">
+                        <i data-lucide="wrench" class="w-8 h-8 text-emerald-400"></i>
+                    </div>
+                    <h2 class="text-2xl font-extrabold tracking-tight">Cek Alat Kerja</h2>
+                    <p class="text-xs text-indigo-200 leading-relaxed max-w-xs mx-auto">
+                        Silakan login memilih Unit dan Nama Teknisi Anda untuk membuka aplikasi. Data tersinkronisasi otomatis via Cloud.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Login Form -->
+            <form id="mainLoginForm" class="p-6 sm:p-8 space-y-5">
+                <!-- Alert Message Box for Invalid Unit/Teknisi combination -->
+                <div id="loginErrorAlert" class="hidden p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold flex items-center space-x-2">
+                    <i data-lucide="alert-circle" class="w-5 h-5 text-rose-500 flex-shrink-0"></i>
+                    <span id="loginErrorMessage">Maaf cek kembali Unit Anda</span>
+                </div>
+
+                <!-- 1. Select Unit -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                        <span>Pilih Unit</span>
+                        <span class="text-rose-500 font-normal text-[10px]">* Wajib</span>
+                    </label>
+                    <div class="relative">
+                        <select id="loginUnit" required class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50 hover:bg-white transition appearance-none">
+                            <option value="">-- Pilih Unit --</option>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="ASSURANCE">ASSURANCE</option>
+                            <option value="PROVISIONING">PROVISIONING</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Select Nama Teknisi / User -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                        <span>Pilih Nama Teknisi / User</span>
+                        <span class="text-rose-500 font-normal text-[10px]">* Wajib</span>
+                    </label>
+                    <div class="relative">
+                        <select id="loginTeknisi" required disabled class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-100 disabled:opacity-60 disabled:cursor-not-allowed transition appearance-none">
+                            <option value="">-- Pilih Unit Terlebih Dahulu --</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="user" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Password Input (Khusus Admin) -->
+                <div id="adminPasswordContainer" class="hidden">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                        <span>Password Admin</span>
+                        <span class="text-rose-500 font-normal text-[10px]">* Wajib</span>
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="loginPassword" placeholder="Masukkan Password Admin" class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50 hover:bg-white transition">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="lock" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/20 transition flex items-center justify-center space-x-2 group">
+                        <span>Masuk Aplikasi</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                </div>
+
+                <div class="text-center pt-2">
+                    <p class="text-[11px] text-slate-400 flex items-center justify-center space-x-1">
+                        <i data-lucide="cloud-lightning" class="w-3 h-3 text-emerald-500"></i>
+                        <span>Cloud Database Active & Real-time Sync</span>
+                    </p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT VIEW: VIEW 2 - KELOLA ALKER DASHBOARD (LOCKED UNTIL LOGIN) -->
+    <div id="viewDashboard" class="hidden flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Quick Summary Stats (Compact Version) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p id="statTotalLabel" class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Total Item Alker</p>
+                        <h3 id="homeStatTotal" class="text-xl font-extrabold text-slate-800 mt-0.5">0</h3>
+                    </div>
+                    <div class="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                        <i data-lucide="boxes" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p id="statScopeNote" class="text-[10px] text-slate-500 mt-1.5 flex items-center space-x-1">
+                    <i data-lucide="info" class="w-3 h-3 text-indigo-500"></i>
+                    <span>Tercatat di sistem</span>
+                </p>
+            </div>
+
+            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Status Layak</p>
+                        <h3 id="homeStatLayak" class="text-xl font-extrabold text-emerald-600 mt-0.5">0</h3>
+                    </div>
+                    <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-1.5 flex items-center space-x-1">
+                    <i data-lucide="check" class="w-3 h-3 text-emerald-500"></i>
+                    <span>Siap digunakan</span>
+                </p>
+            </div>
+
+            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Status Rusak</p>
+                        <h3 id="homeStatRusak" class="text-xl font-extrabold text-amber-600 mt-0.5">0</h3>
+                    </div>
+                    <div class="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-1.5 flex items-center space-x-1">
+                    <i data-lucide="wrench" class="w-3 h-3 text-amber-500"></i>
+                    <span>Butuh perbaikan</span>
+                </p>
+            </div>
+
+            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Tidak Ada / Hilang</p>
+                        <h3 id="homeStatTidakAda" class="text-xl font-extrabold text-rose-600 mt-0.5">0</h3>
+                    </div>
+                    <div class="p-2 bg-rose-50 text-rose-600 rounded-xl">
+                        <i data-lucide="x-circle" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-1.5 flex items-center space-x-1">
+                    <i data-lucide="alert-circle" class="w-3 h-3 text-rose-500"></i>
+                    <span>Konfirmasi teknisi</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Filter & Search Controls -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3 md:space-y-0 md:flex md:items-center md:justify-between md:space-x-4">
+            <!-- Search -->
+            <div class="relative flex-1">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+                </div>
+                <input type="text" id="searchInput" placeholder="Cari berdasarkan Alat, Teknisi, atau STO..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+            </div>
+            
+            <!-- Filters & Export -->
+            <div class="flex flex-wrap items-center gap-2">
+                <select id="filterPosisi" class="border border-slate-300 rounded-lg text-sm px-3 py-2 bg-white text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <option value="">Semua Posisi</option>
+                    <option value="Teknisi">Teknisi</option>
+                    <option value="WH">WH (Warehouse)</option>
+                    <option value="Service">Service</option>
+                </select>
+
+                <select id="filterStatus" class="border border-slate-300 rounded-lg text-sm px-3 py-2 bg-white text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <option value="">Semua Status</option>
+                    <option value="Layak">Layak</option>
+                    <option value="Rusak">Rusak</option>
+                    <option value="Tidak Ada">Tidak Ada</option>
+                </select>
+
+                <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3.5 py-2 rounded-lg text-sm transition shadow-sm flex items-center space-x-2">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                    <span>Ekspor Excel</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 font-semibold uppercase text-xs tracking-wider">
+                        <tr>
+                            <th class="px-4 py-3">Foto</th>
+                            <th class="px-4 py-3">Alat Kerja</th>
+                            <th class="px-4 py-3">Merk / Type</th>
+                            <th class="px-4 py-3">Posisi Alker</th>
+                            <th class="px-4 py-3">Teknisi</th>
+                            <th class="px-4 py-3">Unit</th>
+                            <th class="px-4 py-3">STO</th>
+                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Keterangan</th>
+                            <th class="px-4 py-3">TimeStamp</th>
+                            <th class="px-4 py-3 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-200">
+                        <!-- Dynamic Rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden py-12 text-center">
+                <i data-lucide="folder-open" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
+                <p class="text-base font-medium text-slate-600">Belum ada data alat kerja untuk Anda</p>
+                <p class="text-xs text-slate-400 mt-1">Klik tombol "Tambah Data" di atas untuk menambahkan data baru.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL POPUP FORM ALKER -->
+    <div id="modalForm" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 bg-indigo-700 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="clipboard-check" class="w-5 h-5"></i>
+                    <h3 id="modalTitle" class="font-bold text-lg">Form Input Cek Alat Kerja</h3>
+                </div>
+                <button id="btnCloseModal" class="text-indigo-200 hover:text-white p-1 rounded-lg hover:bg-indigo-600 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Form Fields) -->
+            <form id="alkerForm" class="p-6 space-y-4 overflow-y-auto flex-1">
+                <input type="hidden" id="editId" value="">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- 1. ALAT KERJA -->
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                            1. ALAT KERJA <span class="text-rose-500">*</span>
+                        </label>
+                        <select id="fieldAlatKerja" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                            <option value="">-- Pilih Alat Kerja --</option>
+                            <option value="SPLICER">SPLICER</option>
+                            <option value="DROPCORE STRIPPER">DROPCORE STRIPPER</option>
+                            <option value="TOOLKIT FO (Streper)">TOOLKIT FO (Streper)</option>
+                            <option value="CLEAVER">CLEAVER</option>
+                            <option value="TEST PHONE">TEST PHONE</option>
+                            <option value="LAN TESTER">LAN TESTER</option>
+                            <option value="OPM">OPM</option>
+                            <option value="SENTER">SENTER</option>
+                            <option value="TANGGA 5,1">TANGGA 5,1</option>
+                            <option value="TANGGA 4,4">TANGGA 4,4</option>
+                            <option value="TOOKIT SET LENGKAP">TOOKIT SET LENGKAP</option>
+                            <option value="BODY HARNES">BODY HARNES</option>
+                            <option value="SARUNG TANGAN">SARUNG TANGAN</option>
+                            <option value="HELM">HELM</option>
+                            <option value="CRIMPING TOOL">CRIMPING TOOL</option>
+                            <option value="TONE CHECKER">TONE CHECKER</option>
+                            <option value="POWER BANK">POWER BANK</option>
+                            <option value="KABEL VALIN">KABEL VALIN</option>
+                            <option value="ONE CLICK">ONE CLICK</option>
+                            <option value="TAS PUNGGUNG">TAS PUNGGUNG</option>
+                            <option value="JAS HUJAN">JAS HUJAN</option>
+                            <option value="OTDR MINI">OTDR MINI</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. MERK / TYPE -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                            2. MERK / TYPE <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="fieldMerkType" placeholder="Contoh: Fujikura 70S / Signal Fire" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+
+                    <!-- 3. POSISI ALKER -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                            3. POSISI ALKER <span class="text-rose-500">*</span>
+                        </label>
+                        <select id="fieldPosisiAlker" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                            <option value="">-- Pilih Posisi Alker --</option>
+                            <option value="Teknisi">Teknisi</option>
+                            <option value="WH">WH (Warehouse)</option>
+                            <option value="Service">Service</option>
+                        </select>
+                    </div>
+
+                    <!-- 4. TEKNISI -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                            4. TEKNISI <span class="text-xs text-indigo-600 font-normal">(Terisi Otomatis Dari Login)</span> <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="fieldTeknisi" placeholder="NAMA TEKNISI" required readonly class="w-full border border-slate-300 bg-slate-100 rounded-lg p-2.5 text-sm uppercase font-semibold text-slate-700 outline-none cursor-not-allowed">
+                    </div>
+
+                    <!-- 5. UNIT -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                            5. UNIT <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="fieldUnit" placeholder="UNIT" required readonly class="w-full border border-slate-300 bg-slate-100 rounded-lg p-2.5 text-sm uppercase font-semibold text-slate-700 outline-none cursor-not-allowed">
+                    </div>
+
+                    <!-- 6. STO -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                            6. STO <span class="text-xs text-indigo-600 font-normal">(Otomatis Huruf Besar)</span> <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="fieldSTO" placeholder="NAMA STO (Contoh: BGR, CBO)" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+
+                    <!-- 7. STATUS -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                            7. STATUS <span class="text-rose-500">*</span>
+                        </label>
+                        <select id="fieldStatus" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                            <option value="">-- Pilih Status --</option>
+                            <option value="Layak">Layak</option>
+                            <option value="Rusak">Rusak</option>
+                            <option value="Tidak Ada">Tidak Ada</option>
+                        </select>
+                    </div>
+
+                    <!-- 8. KETERANGAN -->
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                            8. KETERANGAN (OPSIONAL)
+                        </label>
+                        <textarea id="fieldKeterangan" rows="2" placeholder="Tambahkan catatan atau keterangan tambahan di sini..." class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none bg-white"></textarea>
+                    </div>
+
+                    <!-- 9. FOTO / IMAGE -->
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                            9. FOTO / IMAGE
+                        </label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                            <label class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-lg p-3 text-center cursor-pointer transition bg-slate-50 hover:bg-indigo-50/30 flex flex-col items-center justify-center">
+                                <i data-lucide="upload" class="w-5 h-5 text-indigo-600 mb-1"></i>
+                                <span class="text-xs font-semibold text-slate-700">Upload dari File / Galeri</span>
+                                <input type="file" id="fieldFoto" accept="image/*" class="hidden">
+                            </label>
+
+                            <button type="button" id="btnOpenCamera" class="border-2 border-slate-300 hover:border-indigo-500 bg-slate-50 hover:bg-indigo-50/30 rounded-lg p-3 text-center transition flex flex-col items-center justify-center">
+                                <i data-lucide="camera" class="w-5 h-5 text-indigo-600 mb-1"></i>
+                                <span class="text-xs font-semibold text-slate-700">Ambil Foto dengan Kamera</span>
+                            </button>
+                        </div>
+
+                        <!-- Preview Box -->
+                        <div id="imagePreviewContainer" class="hidden flex items-center space-x-3 bg-slate-100 p-2 rounded-xl border border-slate-200">
+                            <div class="w-20 h-20 border border-slate-200 rounded-lg bg-white relative overflow-hidden flex-shrink-0">
+                                <img id="imagePreview" src="" alt="Preview" class="w-full h-full object-cover">
+                            </div>
+                            <div class="flex-1 text-xs text-slate-600">
+                                <p class="font-semibold text-slate-800">Foto Terpilih</p>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Foto ini akan disimpan bersama data alker.</p>
+                            </div>
+                            <button type="button" id="btnRemoveImage" class="bg-rose-100 text-rose-700 p-2 rounded-lg hover:bg-rose-200 transition font-medium text-xs flex items-center space-x-1">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                <span>Hapus</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="pt-4 border-t border-slate-200 flex justify-end space-x-3 mt-6">
+                    <button type="button" id="btnCancel" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 text-sm font-medium transition">
+                        Batal
+                    </button>
+                    <button type="submit" id="btnSaveAlker" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow transition flex items-center space-x-1.5">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        <span>Simpan Data</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Image Full Viewer Modal -->
+    <div id="imageModal" class="fixed inset-0 z-50 bg-slate-900/80 hidden flex items-center justify-center p-4">
+        <div class="relative max-w-3xl max-h-[90vh] w-full flex flex-col items-center">
+            <button id="btnCloseImageModal" class="absolute -top-10 right-0 text-white hover:text-slate-300">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            <img id="modalFullImage" src="" alt="Full Photo" class="max-w-full max-h-[85vh] rounded-lg object-contain shadow-2xl">
+        </div>
+    </div>
+
+    <!-- Live Camera Stream Modal -->
+    <div id="cameraModal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
+            <div class="px-5 py-3 bg-indigo-700 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="camera" class="w-5 h-5"></i>
+                    <h3 class="font-bold text-base">Ambil Foto Langsung</h3>
+                </div>
+                <button type="button" id="btnCloseCamera" class="text-indigo-200 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-4 flex flex-col items-center justify-center bg-black relative">
+                <video id="cameraStream" autoplay playsinline class="w-full h-64 object-cover rounded-lg bg-slate-900"></video>
+                <canvas id="cameraCanvas" class="hidden"></canvas>
+            </div>
+            <div class="p-4 bg-slate-50 flex items-center justify-between gap-3">
+                <button type="button" id="btnSwitchCamera" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-semibold flex items-center space-x-1">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span>Ubah Kamera</span>
+                </button>
+                <button type="button" id="btnCapturePhoto" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-lg transition flex items-center space-x-2">
+                    <i data-lucide="aperture" class="w-4 h-4"></i>
+                    <span>Jepret Foto</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA Install Guide Modal -->
+    <div id="pwaGuideModal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div class="p-5 bg-sky-600 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                    <h3 class="font-bold text-base">Instal Aplikasi di HP Teknisi</h3>
+                </div>
+                <button id="btnClosePwaGuide" class="text-sky-200 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4 text-xs text-slate-700">
+                <p class="font-semibold text-slate-800 text-sm">
+                    Aplikasi ini dapat diinstal langsung ke HP Android/iOS tanpa melalui Play Store/App Store (PWA).
+                </p>
+
+                <div class="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+                    <p class="font-bold text-indigo-700 flex items-center space-x-1.5">
+                        <i data-lucide="smartphone" class="w-4 h-4 text-indigo-600"></i>
+                        <span>Cara Instal di Android (Chrome/Edge):</span>
+                    </p>
+                    <ol class="list-decimal list-inside space-y-1 text-slate-600 pl-1">
+                        <li>Ketuk tombol titik tiga <b>(&#8942;)</b> di pojok kanan atas browser.</li>
+                        <li>Pilih menu <b>"Tambahkan ke Layar Utama"</b> atau <b>"Instal Aplikasi"</b>.</li>
+                        <li>Klik <b>"Instal"</b> pada konfirmasi.</li>
+                    </ol>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+                    <p class="font-bold text-slate-800 flex items-center space-x-1.5">
+                        <i data-lucide="apple" class="w-4 h-4 text-slate-700"></i>
+                        <span>Cara Instal di iPhone / iOS (Safari):</span>
+                    </p>
+                    <ol class="list-decimal list-inside space-y-1 text-slate-600 pl-1">
+                        <li>Ketuk tombol <b>Share / Bagikan</b> di bagian bawah layar.</li>
+                        <li>Geser ke bawah dan pilih <b>"Tambahkan ke Layar Utama"</b> (<i>Add to Home Screen</i>).</li>
+                        <li>Tekan <b>"Tambah"</b> di pojok kanan atas.</li>
+                    </ol>
+                </div>
+
+                <button id="btnTriggerDirectInstall" class="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl text-xs transition shadow-md flex items-center justify-center space-x-2">
+                    <i data-lucide="download-cloud" class="w-4 h-4"></i>
+                    <span>Pasang Otomatis Sekarang</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MASTER DATA TEKNISI & UNIT
+        const masterTeknisi = [
+            { name: "ADMIN", unit: "ADMIN" },
+            { name: "RONY SETYA PURBOWO", unit: "ASSURANCE" },
+            { name: "IRPAN KURNIAWAN", unit: "ASSURANCE" },
+            { name: "EDWIN RUM OHOIRA", unit: "ASSURANCE" },
+            { name: "LEONARDO CORNELIUS", unit: "ASSURANCE" },
+            { name: "IHDAM AL MUTADI BILAH", unit: "ASSURANCE" },
+            { name: "ZIDANE MOCHAMAD HAFIZ", unit: "ASSURANCE" },
+            { name: "ASEP SAEPUL", unit: "ASSURANCE" },
+            { name: "ABDUL ROZAK", unit: "ASSURANCE" },
+            { name: "ACHMAD YUSUP", unit: "ASSURANCE" },
+            { name: "M ZENKURSANI", unit: "ASSURANCE" },
+            { name: "JEMMY FRATAMA", unit: "ASSURANCE" },
+            { name: "MUKHLISTIAWAN", unit: "ASSURANCE" },
+            { name: "TARMIJI", unit: "ASSURANCE" },
+            { name: "ENCEP TATANG HERMAWAN", unit: "PROVISIONING" },
+            { name: "LUKMANUL HAKIM", unit: "PROVISIONING" },
+            { name: "MUHAMMAD RISWAN", unit: "PROVISIONING" },
+            { name: "AHMAD GOJALI", unit: "PROVISIONING" },
+            { name: "AEP SAEPUDIN", unit: "PROVISIONING" },
+            { name: "SAMMAJID", unit: "PROVISIONING" },
+            { name: "DEDI DORES", unit: "PROVISIONING" },
+            { name: "MARDIANSYAH", unit: "ASSURANCE" },
+            { name: "AGUS SAPRUDIN", unit: "ASSURANCE" },
+            { name: "WAWAN HERAWAN", unit: "ASSURANCE" },
+            { name: "ALPINO", unit: "ASSURANCE" },
+            { name: "VEGY NOVIANA PERMADI", unit: "ASSURANCE" },
+            { name: "AJI TRIYANA", unit: "PROVISIONING" },
+            { name: "MULYONO", unit: "PROVISIONING" },
+            { name: "ADING", unit: "ASSURANCE" },
+            { name: "DAVID M", unit: "ASSURANCE" },
+            { name: "APRYAN VISNU WARDHANI", unit: "ASSURANCE" },
+            { name: "KI AGUS HAVIZ RIMANTO", unit: "ASSURANCE" },
+            { name: "WAHYU ACHWAL", unit: "ASSURANCE" },
+            { name: "NASROH WIJAYA", unit: "PROVISIONING" },
+            { name: "UCI SANUSI", unit: "PROVISIONING" },
+            { name: "ASEP HUDAEPAH", unit: "ASSURANCE" },
+            { name: "MOCHAMMAD SODIQ", unit: "ASSURANCE" },
+            { name: "REVI FADILLAH", unit: "ASSURANCE" },
+            { name: "DEO RIVALDO", unit: "ASSURANCE" },
+            { name: "ASEP ROSADI", unit: "PROVISIONING" },
+            { name: "SUWANDI", unit: "PROVISIONING" }
+        ];
+
+        let dataAlker = [];
+        let currentUser = JSON.parse(localStorage.getItem('cek_alker_user')) || null;
+        let currentPhotoBase64 = '';
+        let mediaStream = null;
+        let useFacingMode = "environment";
+        let unsubscribeFirestore = null;
+
+        // Firebase Setup & Real-time Cloud Listener using mandatory paths
+        async function initCloudSync() {
+            try {
+                if (typeof window.auth !== 'undefined' && typeof window.cloudFunctions !== 'undefined') {
+                    const { signInAnonymously, signInWithCustomToken } = window.cloudFunctions;
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        try {
+                            await signInWithCustomToken(window.auth, __initial_auth_token);
+                        } catch (e) {
+                            await signInAnonymously(window.auth);
+                        }
+                    } else {
+                        await signInAnonymously(window.auth);
+                    }
+                    setupFirestoreListener();
+                } else {
+                    dataAlker = JSON.parse(localStorage.getItem('cek_alker_db')) || [];
+                    updateStats();
+                    renderTable();
+                }
+            } catch (err) {
+                console.warn("Firebase Auth fallback:", err);
+                dataAlker = JSON.parse(localStorage.getItem('cek_alker_db')) || [];
+                updateStats();
+                renderTable();
+            }
+        }
+
+        function setupFirestoreListener() {
+            const { collection, onSnapshot } = window.cloudFunctions;
+            const colRef = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'public_data');
+            
+            if (unsubscribeFirestore) unsubscribeFirestore();
+
+            unsubscribeFirestore = onSnapshot(colRef, (snapshot) => {
+                const cloudItems = [];
+                snapshot.forEach((docSnap) => {
+                    cloudItems.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                dataAlker = cloudItems;
+                localStorage.setItem('cek_alker_db', JSON.stringify(dataAlker));
+                
+                const syncDot = document.getElementById('syncDot');
+                const syncText = document.getElementById('syncText');
+                if (syncDot) syncDot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+                if (syncText) syncText.textContent = "Cloud Synchronized";
+
+                updateStats();
+                renderTable();
+            }, (error) => {
+                console.error("Firestore sync error:", error);
+                const syncDot = document.getElementById('syncDot');
+                const syncText = document.getElementById('syncText');
+                if (syncDot) syncDot.className = "w-2 h-2 rounded-full bg-amber-400";
+                if (syncText) syncText.textContent = "Offline Mode";
+                dataAlker = JSON.parse(localStorage.getItem('cek_alker_db')) || [];
+                updateStats();
+                renderTable();
+            });
+        }
+
+        // Helper Functions for Error Handling & UI Updates
+        function showLoginError(msg) {
+            const errorAlert = document.getElementById('loginErrorAlert');
+            const errorMessage = document.getElementById('loginErrorMessage');
+            if (errorAlert && errorMessage) {
+                errorMessage.textContent = msg;
+                errorAlert.classList.remove('hidden');
+            }
+        }
+
+        function hideLoginError() {
+            const errorAlert = document.getElementById('loginErrorAlert');
+            if (errorAlert) {
+                errorAlert.classList.add('hidden');
+            }
+        }
+
+        function updateAuthUI() {
+            const viewHome = document.getElementById('viewHome');
+            const viewDashboard = document.getElementById('viewDashboard');
+            const navTabContainer = document.getElementById('navTabContainer');
+            const userInfoContainer = document.getElementById('userInfoContainer');
+            const btnOpenModal = document.getElementById('btnOpenModal');
+            const adminBadge = document.getElementById('adminBadge');
+            const statScopeNote = document.getElementById('statScopeNote');
+
+            if (currentUser) {
+                if (viewHome) viewHome.classList.add('hidden');
+                if (viewDashboard) viewDashboard.classList.remove('hidden');
+                if (navTabContainer) navTabContainer.classList.remove('hidden');
+                if (userInfoContainer) userInfoContainer.classList.remove('hidden');
+                if (btnOpenModal) btnOpenModal.classList.remove('hidden');
+
+                const userNameDisplay = document.getElementById('userNameDisplay');
+                const userUnitDisplay = document.getElementById('userUnitDisplay');
+                const userAvatar = document.getElementById('userAvatar');
+
+                if (userNameDisplay) userNameDisplay.textContent = currentUser.name;
+                if (userUnitDisplay) userUnitDisplay.textContent = currentUser.unit;
+                if (userAvatar) {
+                    if (currentUser.isAdmin) {
+                        userAvatar.className = "w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center font-extrabold text-slate-900 text-xs shadow";
+                        userAvatar.textContent = "A";
+                    } else {
+                        userAvatar.className = "w-7 h-7 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white text-xs";
+                        userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+                    }
+                }
+
+                if (currentUser.isAdmin) {
+                    if (adminBadge) adminBadge.classList.remove('hidden');
+                    if (statScopeNote) statScopeNote.innerHTML = `<i data-lucide="database" class="w-3 h-3 text-amber-500 inline mr-1"></i><span>Seluruh Database Teknisi</span>`;
+                } else {
+                    if (adminBadge) adminBadge.classList.add('hidden');
+                    if (statScopeNote) statScopeNote.innerHTML = `<i data-lucide="user-check" class="w-3 h-3 text-indigo-500 inline mr-1"></i><span>Data Personal Teknisi</span>`;
+                }
+            } else {
+                if (viewHome) viewHome.classList.remove('hidden');
+                if (viewDashboard) viewDashboard.classList.add('hidden');
+                if (navTabContainer) navTabContainer.classList.add('hidden');
+                if (userInfoContainer) userInfoContainer.classList.add('hidden');
+                if (btnOpenModal) btnOpenModal.classList.add('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        function updateStats() {
+            if (!currentUser) return;
+
+            const relevantData = currentUser.isAdmin
+                ? dataAlker
+                : dataAlker.filter(d => d.teknisi && d.teknisi.toUpperCase() === currentUser.name.toUpperCase());
+
+            const total = relevantData.length;
+            const layak = relevantData.filter(d => d.status === 'Layak').length;
+            const rusak = relevantData.filter(d => d.status === 'Rusak').length;
+            const tidakAda = relevantData.filter(d => d.status === 'Tidak Ada').length;
+
+            const homeStatTotal = document.getElementById('homeStatTotal');
+            const homeStatLayak = document.getElementById('homeStatLayak');
+            const homeStatRusak = document.getElementById('homeStatRusak');
+            const homeStatTidakAda = document.getElementById('homeStatTidakAda');
+
+            if (homeStatTotal) homeStatTotal.textContent = total;
+            if (homeStatLayak) homeStatLayak.textContent = layak;
+            if (homeStatRusak) homeStatRusak.textContent = rusak;
+            if (homeStatTidakAda) homeStatTidakAda.textContent = tidakAda;
+        }
+
+        window.openImageModal = function(src) {
+            const imageModal = document.getElementById('imageModal');
+            const modalFullImage = document.getElementById('modalFullImage');
+            if (imageModal && modalFullImage) {
+                modalFullImage.src = src;
+                imageModal.classList.remove('hidden');
+            }
+        };
+
+        window.editData = function(id) {
+            const item = dataAlker.find(d => d.id === id);
+            if (!item) return;
+
+            document.getElementById('editId').value = item.id;
+            document.getElementById('fieldAlatKerja').value = item.alatKerja || '';
+            document.getElementById('fieldMerkType').value = item.merkType || '';
+            document.getElementById('fieldPosisiAlker').value = item.posisiAlker || '';
+            document.getElementById('fieldTeknisi').value = item.teknisi || currentUser.name;
+            document.getElementById('fieldUnit').value = item.unit || currentUser.unit;
+            document.getElementById('fieldSTO').value = item.sto || '';
+            document.getElementById('fieldStatus').value = item.status || '';
+            document.getElementById('fieldKeterangan').value = item.keterangan || '';
+
+            if (item.foto) {
+                currentPhotoBase64 = item.foto;
+                document.getElementById('imagePreview').src = item.foto;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+            } else {
+                currentPhotoBase64 = '';
+                document.getElementById('imagePreviewContainer').classList.add('hidden');
+            }
+
+            document.getElementById('modalTitle').textContent = "Edit Data Alat Kerja";
+            document.getElementById('modalForm').classList.remove('hidden');
+        };
+
+        window.deleteData = async function(id) {
+            if (confirm("Apakah Anda yakin ingin menghapus data alat kerja ini?")) {
+                try {
+                    if (typeof window.db !== 'undefined' && window.cloudFunctions) {
+                        const { doc, deleteDoc } = window.cloudFunctions;
+                        await deleteDoc(doc(window.db, 'artifacts', window.appId, 'public', 'data', 'public_data', id));
+                    }
+                    dataAlker = dataAlker.filter(d => d.id !== id);
+                    localStorage.setItem('cek_alker_db', JSON.stringify(dataAlker));
+                    renderTable();
+                    updateStats();
+                } catch (err) {
+                    console.error("Error deleting document:", err);
+                    alert("Gagal menghapus data dari cloud.");
+                }
+            }
+        };
+
+        // DOM Loaded Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginUnit = document.getElementById('loginUnit');
+            const loginTeknisi = document.getElementById('loginTeknisi');
+            const adminPasswordContainer = document.getElementById('adminPasswordContainer');
+            const loginPassword = document.getElementById('loginPassword');
+            const mainLoginForm = document.getElementById('mainLoginForm');
+            const btnLogout = document.getElementById('btnLogout');
+            const btnOpenModal = document.getElementById('btnOpenModal');
+            const btnCloseModal = document.getElementById('btnCloseModal');
+            const btnCancel = document.getElementById('btnCancel');
+            const modalForm = document.getElementById('modalForm');
+            const alkerForm = document.getElementById('alkerForm');
+            const fieldFoto = document.getElementById('fieldFoto');
+            const imagePreview = document.getElementById('imagePreview');
+            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+            const btnRemoveImage = document.getElementById('btnRemoveImage');
+            const btnOpenCamera = document.getElementById('btnOpenCamera');
+            const cameraModal = document.getElementById('cameraModal');
+            const btnCloseCamera = document.getElementById('btnCloseCamera');
+            const btnSwitchCamera = document.getElementById('btnSwitchCamera');
+            const btnCapturePhoto = document.getElementById('btnCapturePhoto');
+            const cameraStream = document.getElementById('cameraStream');
+            const cameraCanvas = document.getElementById('cameraCanvas');
+            const searchInput = document.getElementById('searchInput');
+            const filterPosisi = document.getElementById('filterPosisi');
+            const filterStatus = document.getElementById('filterStatus');
+            const btnInstallPWA = document.getElementById('btnInstallPWA');
+            const pwaGuideModal = document.getElementById('pwaGuideModal');
+            const btnClosePwaGuide = document.getElementById('btnClosePwaGuide');
+            const btnExport = document.getElementById('btnExport');
+            const imageModal = document.getElementById('imageModal');
+            const btnCloseImageModal = document.getElementById('btnCloseImageModal');
+
+            loginUnit.addEventListener('change', (e) => {
+                const selectedUnit = e.target.value;
+                const currentSelectedTeknisi = loginTeknisi.value;
+                hideLoginError();
+
+                if (selectedUnit === 'ADMIN') {
+                    adminPasswordContainer.classList.remove('hidden');
+                    loginPassword.required = true;
+                } else {
+                    adminPasswordContainer.classList.add('hidden');
+                    loginPassword.required = false;
+                    loginPassword.value = '';
+                }
+
+                loginTeknisi.innerHTML = `<option value="">-- Pilih Nama Teknisi / User --</option>`;
+
+                if (selectedUnit) {
+                    const filteredTeknisi = masterTeknisi.filter(t => t.unit === selectedUnit);
+                    filteredTeknisi.forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t.name;
+                        opt.textContent = t.name;
+                        loginTeknisi.appendChild(opt);
+                    });
+                    loginTeknisi.disabled = false;
+                    loginTeknisi.classList.remove('bg-slate-100');
+
+                    if (selectedUnit === 'ADMIN') {
+                        loginTeknisi.value = 'ADMIN';
+                    } else if (currentSelectedTeknisi) {
+                        const isValidCombo = masterTeknisi.some(t => t.name === currentSelectedTeknisi && t.unit === selectedUnit);
+                        if (!isValidCombo) {
+                            showLoginError("Maaf cek kembali Unit Anda");
+                        } else {
+                            loginTeknisi.value = currentSelectedTeknisi;
+                        }
+                    }
+                } else {
+                    loginTeknisi.disabled = true;
+                    loginTeknisi.classList.add('bg-slate-100');
+                }
+            });
+
+            mainLoginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                hideLoginError();
+
+                const unitVal = loginUnit.value;
+                const nameVal = loginTeknisi.value;
+                const passVal = loginPassword.value;
+
+                if (!unitVal || !nameVal) return;
+
+                if (unitVal === 'ADMIN' && nameVal === 'ADMIN') {
+                    if (passVal !== 'ADMIN 123') {
+                        showLoginError("Password Admin Salah! Gunakan 'ADMIN 123'");
+                        return;
+                    }
+                }
+
+                const matchedUser = masterTeknisi.find(t => t.name === nameVal && t.unit === unitVal);
+
+                if (!matchedUser) {
+                    showLoginError("Maaf cek kembali Unit Anda");
+                    return;
+                }
+
+                currentUser = { name: matchedUser.name, unit: matchedUser.unit, isAdmin: (matchedUser.unit === 'ADMIN') };
+                localStorage.setItem('cek_alker_user', JSON.stringify(currentUser));
+
+                updateAuthUI();
+                renderTable();
+                updateStats();
+            });
+
+            btnLogout.addEventListener('click', () => {
+                currentUser = null;
+                localStorage.removeItem('cek_alker_user');
+                updateAuthUI();
+            });
+
+            btnOpenModal.addEventListener('click', () => {
+                alkerForm.reset();
+                document.getElementById('editId').value = "";
+                document.getElementById('fieldTeknisi').value = currentUser.name;
+                document.getElementById('fieldUnit').value = currentUser.unit;
+                document.getElementById('fieldKeterangan').value = '';
+                currentPhotoBase64 = '';
+                imagePreviewContainer.classList.add('hidden');
+                document.getElementById('modalTitle').textContent = "Form Input Cek Alat Kerja";
+                modalForm.classList.remove('hidden');
+            });
+
+            btnCloseModal.addEventListener('click', () => modalForm.classList.add('hidden'));
+            btnCancel.addEventListener('click', () => modalForm.classList.add('hidden'));
+            btnCloseImageModal.addEventListener('click', () => imageModal.classList.add('hidden'));
+
+            alkerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const editId = document.getElementById('editId').value;
+                const now = new Date();
+                const timeStampStr = now.toLocaleDateString('id-ID') + ' ' + now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                const docId = editId ? editId : 'alker_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+                const newItem = {
+                    id: docId,
+                    alatKerja: document.getElementById('fieldAlatKerja').value,
+                    merkType: document.getElementById('fieldMerkType').value,
+                    posisiAlker: document.getElementById('fieldPosisiAlker').value,
+                    teknisi: document.getElementById('fieldTeknisi').value,
+                    unit: document.getElementById('fieldUnit').value,
+                    sto: document.getElementById('fieldSTO').value.toUpperCase(),
+                    status: document.getElementById('fieldStatus').value,
+                    keterangan: document.getElementById('fieldKeterangan').value,
+                    foto: currentPhotoBase64,
+                    updatedAt: timeStampStr,
+                    createdAtTime: Date.now()
+                };
+
+                const btnSaveAlker = document.getElementById('btnSaveAlker');
+                btnSaveAlker.disabled = true;
+                btnSaveAlker.textContent = "Menyimpan ke Cloud...";
+
+                try {
+                    if (typeof window.db !== 'undefined' && window.cloudFunctions) {
+                        const { doc, setDoc } = window.cloudFunctions;
+                        await setDoc(doc(window.db, 'artifacts', window.appId, 'public', 'data', 'public_data', docId), newItem);
+                    }
+
+                    const index = dataAlker.findIndex(d => d.id === docId);
+                    if (index >= 0) {
+                        dataAlker[index] = newItem;
+                    } else {
+                        dataAlker.unshift(newItem);
+                    }
+                    localStorage.setItem('cek_alker_db', JSON.stringify(dataAlker));
+
+                    modalForm.classList.add('hidden');
+                    renderTable();
+                    updateStats();
+                } catch (err) {
+                    console.error("Error saving to Firestore:", err);
+                    alert("Gagal menyimpan ke Cloud. Periksa koneksi internet Anda.");
+                } finally {
+                    btnSaveAlker.disabled = false;
+                    btnSaveAlker.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i><span>Simpan Data</span>`;
+                    lucide.createIcons();
+                }
+            });
+
+            fieldFoto.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        currentPhotoBase64 = event.target.result;
+                        imagePreview.src = currentPhotoBase64;
+                        imagePreviewContainer.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            btnRemoveImage.addEventListener('click', () => {
+                currentPhotoBase64 = '';
+                fieldFoto.value = '';
+                imagePreviewContainer.classList.add('hidden');
+            });
+
+            btnOpenCamera.addEventListener('click', async () => {
+                cameraModal.classList.remove('hidden');
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: useFacingMode },
+                        audio: false
+                    });
+                    cameraStream.srcObject = mediaStream;
+                } catch (err) {
+                    alert("Tidak dapat mengakses kamera perangkat. Pastikan izin kamera diaktifkan.");
+                    cameraModal.classList.add('hidden');
+                }
+            });
+
+            btnCloseCamera.addEventListener('click', () => {
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                }
+                cameraModal.classList.add('hidden');
+            });
+
+            btnSwitchCamera.addEventListener('click', async () => {
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                }
+                useFacingMode = useFacingMode === "environment" ? "user" : "environment";
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: useFacingMode },
+                        audio: false
+                    });
+                    cameraStream.srcObject = mediaStream;
+                } catch (err) {
+                    console.error(err);
+                }
+            });
+
+            btnCapturePhoto.addEventListener('click', () => {
+                const width = cameraStream.videoWidth || 640;
+                const height = cameraStream.videoHeight || 480;
+                cameraCanvas.width = width;
+                cameraCanvas.height = height;
+                const ctx = cameraCanvas.getContext('2d');
+                ctx.drawImage(cameraStream, 0, 0, width, height);
+
+                currentPhotoBase64 = cameraCanvas.toDataURL('image/jpeg', 0.85);
+                imagePreview.src = currentPhotoBase64;
+                imagePreviewContainer.classList.remove('hidden');
+
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                }
+                cameraModal.classList.add('hidden');
+            });
+
+            searchInput.addEventListener('input', renderTable);
+            filterPosisi.addEventListener('change', renderTable);
+            filterStatus.addEventListener('change', renderTable);
+
+            btnInstallPWA.addEventListener('click', () => pwaGuideModal.classList.remove('hidden'));
+            btnClosePwaGuide.addEventListener('click', () => pwaGuideModal.classList.add('hidden'));
+
+            btnExport.addEventListener('click', () => {
+                if (!currentUser) return;
+
+                const exportData = currentUser.isAdmin 
+                    ? dataAlker 
+                    : dataAlker.filter(d => d.teknisi && d.teknisi.toUpperCase() === currentUser.name.toUpperCase());
+
+                if (exportData.length === 0) {
+                    alert("Belum ada data untuk diekspor!");
+                    return;
+                }
+
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const titleHeader = currentUser.isAdmin ? "LAPORAN SELURUH DATABASE ALAT KERJA TEKNISI" : `LAPORAN CEK ALAT KERJA - ${currentUser.name}`;
+
+                const wsData = [
+                    [titleHeader],
+                    ["Tanggal Unduh:", dateStr, "Unit/Role:", currentUser.unit, "", "", "", "", "", ""],
+                    [],
+                    ["NO", "ALAT KERJA", "MERK / TYPE", "POSISI ALKER", "TEKNISI", "UNIT", "STO", "STATUS", "KETERANGAN", "TIMESTAMP"]
+                ];
+
+                exportData.forEach((row, i) => {
+                    wsData.push([
+                        i + 1,
+                        row.alatKerja || "-",
+                        row.merkType || "-",
+                        row.posisiAlker || "-",
+                        row.teknisi || "-",
+                        row.unit || "-",
+                        row.sto || "-",
+                        row.status || "-",
+                        row.keterangan || "-",
+                        row.updatedAt || "-"
+                    ]);
+                });
+
+                const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+
+                worksheet['!cols'] = [
+                    { wch: 6 },
+                    { wch: 24 },
+                    { wch: 25 },
+                    { wch: 16 },
+                    { wch: 24 },
+                    { wch: 16 },
+                    { wch: 12 },
+                    { wch: 14 },
+                    { wch: 30 },
+                    { wch: 22 }
+                ];
+
+                worksheet['!merges'] = [
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }
+                ];
+
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Data Alat Kerja");
+
+                const formattedDate = now.toISOString().slice(0, 10);
+                const fileNamePrefix = currentUser.isAdmin ? 'Full_Database_Alker' : `Laporan_Alker_${currentUser.name.replace(/\s+/g, '_')}`;
+                const fileName = `${fileNamePrefix}_${formattedDate}.xlsx`;
+
+                XLSX.writeFile(workbook, fileName);
+            });
+
+            initCloudSync();
+            if (currentUser) {
+                updateAuthUI();
+                renderTable();
+                updateStats();
+            } else {
+                updateAuthUI();
+            }
+        });
+
+        // Render Table Data
+        function renderTable() {
+            if (!currentUser) return;
+
+            const searchInput = document.getElementById('searchInput');
+            const filterPosisi = document.getElementById('filterPosisi');
+            const filterStatus = document.getElementById('filterStatus');
+            const tableBody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            const search = searchInput ? searchInput.value.toLowerCase() : '';
+            const posFilter = filterPosisi ? filterPosisi.value : '';
+            const statusFil = filterStatus ? filterStatus.value : '';
+
+            const filtered = dataAlker.filter((item) => {
+                const isMyData = currentUser.isAdmin || (item.teknisi && item.teknisi.toUpperCase() === currentUser.name.toUpperCase());
+
+                const matchesSearch = 
+                    (item.alatKerja && item.alatKerja.toLowerCase().includes(search)) ||
+                    (item.sto && item.sto.toLowerCase().includes(search)) ||
+                    (item.merkType && item.merkType.toLowerCase().includes(search)) ||
+                    (item.teknisi && item.teknisi.toLowerCase().includes(search)) ||
+                    (item.unit && item.unit.toLowerCase().includes(search)) ||
+                    (item.keterangan && item.keterangan.toLowerCase().includes(search));
+
+                const matchesPosisi = posFilter === '' || item.posisiAlker === posFilter;
+                const matchesStatus = statusFil === '' || item.status === statusFil;
+
+                return isMyData && matchesSearch && matchesPosisi && matchesStatus;
+            });
+
+            filtered.sort((a, b) => (b.createdAtTime || 0) - (a.createdAtTime || 0));
+
+            if (tableBody) tableBody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                if (emptyState) emptyState.classList.remove('hidden');
+            } else {
+                if (emptyState) emptyState.classList.add('hidden');
+
+                filtered.forEach((item) => {
+                    let statusBadge = '';
+                    if (item.status === 'Layak') {
+                        statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Layak</span>`;
+                    } else if (item.status === 'Rusak') {
+                        statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 border border-amber-200">Rusak</span>`;
+                    } else {
+                        statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 border border-rose-200">Tidak Ada</span>`;
+                    }
+
+                    const rowHtml = `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="px-4 py-3">
+                                ${item.foto 
+                                    ? `<img src="${item.foto}" onclick="openImageModal('${item.foto}')" class="w-10 h-10 rounded-lg object-cover cursor-pointer hover:opacity-80 transition border border-slate-200 shadow-sm" alt="Foto Alker">`
+                                    : `<div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200"><i data-lucide="image-off" class="w-5 h-5"></i></div>`}
+                            </td>
+                            <td class="px-4 py-3 font-semibold text-slate-800">${item.alatKerja || '-'}</td>
+                            <td class="px-4 py-3 text-slate-600">${item.merkType || '-'}</td>
+                            <td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-medium text-xs text-slate-700">${item.posisiAlker || '-'}</span></td>
+                            <td class="px-4 py-3 font-semibold text-indigo-700 uppercase">${item.teknisi || '-'}</td>
+                            <td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-xs font-bold uppercase">${item.unit || '-'}</span></td>
+                            <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700 uppercase">${item.sto || '-'}</td>
+                            <td class="px-4 py-3">${statusBadge}</td>
+                            <td class="px-4 py-3 text-xs text-slate-600 max-w-xs truncate" title="${item.keterangan || ''}">${item.keterangan || '-'}</td>
+                            <td class="px-4 py-3 text-xs text-slate-500 font-mono">${item.updatedAt || '-'}</td>
+                            <td class="px-4 py-3 text-center space-x-1 whitespace-nowrap">
+                                <button onclick="editData('${item.id}')" class="p-1.5 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-lg transition" title="Edit Data">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteData('${item.id}')" class="p-1.5 text-rose-600 hover:text-rose-900 hover:bg-rose-50 rounded-lg transition" title="Hapus Data">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    if (tableBody) tableBody.insertAdjacentHTML('beforeend', rowHtml);
+                });
+            }
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>
