@@ -5,58 +5,39 @@ import { AlkerModal } from './components/AlkerModal';
 import { AlkerItem, UserSession, StokPembelianItem } from './types/inventory';
 import { INITIAL_ALKER_DATA, INITIAL_STOK_PEMBELIAN_DATA } from './data/initialData';
 import { CheckCircle2 } from 'lucide-react';
+import { db } from './firebase';
+import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 export default function App() {
-  // Current active user session
   const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
     try {
       const saved = localStorage.getItem('cek_alker_user');
       return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   });
 
-  // Alker database items
-  const [alkerData, setAlkerData] = useState<AlkerItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('cek_alker_db');
-      return saved ? JSON.parse(saved) : INITIAL_ALKER_DATA;
-    } catch {
-      return INITIAL_ALKER_DATA;
-    }
-  });
-
-  // Stok & Pembelian database items
-  const [stokData, setStokData] = useState<StokPembelianItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('cek_alker_stok_pembelian');
-      return saved ? JSON.parse(saved) : INITIAL_STOK_PEMBELIAN_DATA;
-    } catch {
-      return INITIAL_STOK_PEMBELIAN_DATA;
-    }
-  });
-
-  // Modal state
+  const [alkerData, setAlkerData] = useState<AlkerItem[]>([]);
+  const [stokData, setStokData] = useState<StokPembelianItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [itemToEdit, setItemToEdit] = useState<AlkerItem | null>(null);
-
-  // Toast notification
   const [toastMessage, setToastMessage] = useState<string>('');
 
+  // AMBIL DATA REALTIME DARI FIREBASE
   useEffect(() => {
-    localStorage.setItem('cek_alker_db', JSON.stringify(alkerData));
-  }, [alkerData]);
-
-  useEffect(() => {
-    localStorage.setItem('cek_alker_stok_pembelian', JSON.stringify(stokData));
-  }, [stokData]);
+    const unsub1 = onSnapshot(collection(db, "alker_data"), (snap) => {
+      const items = snap.docs.map(d => d.data() as AlkerItem);
+      setAlkerData(items.length > 0 ? items : INITIAL_ALKER_DATA);
+    });
+    const unsub2 = onSnapshot(collection(db, "stok_pembelian"), (snap) => {
+      const items = snap.docs.map(d => d.data() as StokPembelianItem);
+      setStokData(items.length > 0 ? items : INITIAL_STOK_PEMBELIAN_DATA);
+    });
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage('');
-    }, 3500);
+    setTimeout(() => setToastMessage(''), 3500);
   };
 
   const handleLoginSuccess = (user: UserSession) => {
@@ -68,69 +49,7 @@ export default function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('cek_alker_user');
-    showToast('Anda telah keluar dari aplikasi.');
-  };
-
-  const handleSaveItem = (savedItem: AlkerItem) => {
-    const existingIndex = alkerData.findIndex((i) => i.id === savedItem.id);
-    if (existingIndex >= 0) {
-      const updated = [...alkerData];
-      updated[existingIndex] = savedItem;
-      setAlkerData(updated);
-      showToast(`Data alat "${savedItem.alatKerja}" berhasil diperbarui.`);
-    } else {
-      setAlkerData([savedItem, ...alkerData]);
-      showToast(`Data alat "${savedItem.alatKerja}" berhasil ditambahkan.`);
-    }
-  };
-
-  const handleDeleteItem = (id: string) => {
-    if (!currentUser?.isAdmin) {
-      showToast('Maaf Untuk Edit & Hapus Bukan Kapasitas Anda');
-      return;
-    }
-    const item = alkerData.find((i) => i.id === id);
-    setAlkerData(alkerData.filter((i) => i.id !== id));
-    showToast(`Data alat ${item ? `"${item.alatKerja}"` : ''} berhasil dihapus.`);
-  };
-
-  const handleUpdateItemFoto = (id: string, fotoBase64: string) => {
-    setAlkerData((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, foto: fotoBase64 } : item))
-    );
-    showToast('Eviden foto berhasil disimpan.');
-  };
-
-  const handleSaveStokItem = (savedItem: StokPembelianItem) => {
-    const existingIndex = stokData.findIndex((i) => i.id === savedItem.id);
-    if (existingIndex >= 0) {
-      const updated = [...stokData];
-      updated[existingIndex] = savedItem;
-      setStokData(updated);
-      showToast(`Data stok "${savedItem.alatKerja}" berhasil diperbarui.`);
-    } else {
-      setStokData([savedItem, ...stokData]);
-      showToast(`Data stok "${savedItem.alatKerja}" berhasil ditambahkan.`);
-    }
-  };
-
-  const handleDeleteStokItem = (id: string) => {
-    if (!currentUser?.isAdmin) {
-      showToast('Maaf Untuk Edit & Hapus Bukan Kapasitas Anda');
-      return;
-    }
-    const item = stokData.find((i) => i.id === id);
-    setStokData(stokData.filter((i) => i.id !== id));
-    showToast(`Data stok ${item ? `"${item.alatKerja}"` : ''} berhasil dihapus.`);
-  };
-
-  const handleOpenEdit = (item: AlkerItem) => {
-    if (!currentUser?.isAdmin) {
-      showToast('Maaf Untuk Edit & Hapus Bukan Kapasitas Anda');
-      return;
-    }
-    setItemToEdit(item);
-    setIsModalOpen(true);
+    showToast('Anda telah logout');
   };
 
   const handleOpenAdd = () => {
@@ -138,22 +57,48 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  // If user is not logged in, render the clean login landing page requested
+  const handleOpenEdit = (item: AlkerItem) => {
+    setItemToEdit(item);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if(!confirm("Hapus item ini?")) return;
+    await deleteDoc(doc(db, "alker_data", id));
+    showToast('Item dihapus dari Firebase');
+  };
+
+  const handleUpdateItemFoto = async (id: string, foto: string) => {
+    const item = alkerData.find(i => i.id === id);
+    if(item){
+      await setDoc(doc(db, "alker_data", id), { ...item, foto });
+      showToast('Foto diperbarui');
+    }
+  };
+
+  const handleSaveItem = async (item: AlkerItem) => {
+    await setDoc(doc(db, "alker_data", item.id), item);
+    showToast(itemToEdit ? 'Item diperbarui di Firebase!' : 'Item baru masuk Firebase!');
+    setIsModalOpen(false);
+    setItemToEdit(null);
+  };
+
+  const handleSaveStokItem = async (item: StokPembelianItem) => {
+    await setDoc(doc(db, "stok_pembelian", item.id), item);
+    showToast('Data stok tersimpan ke Firebase!');
+  };
+
+  const handleDeleteStokItem = async (id: string) => {
+    await deleteDoc(doc(db, "stok_pembelian", id));
+    showToast('Data stok dihapus');
+  };
+
   if (!currentUser) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
     <>
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center space-x-2.5 text-xs font-semibold animate-bounce">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
-      {/* Main Database View matching image_b3b599da.png */}
       <AlkerDashboard
         currentUser={currentUser}
         alkerData={alkerData}
@@ -175,6 +120,13 @@ export default function App() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveItem}
       />
+
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-2 z-[100]">
+          <CheckCircle2 className="w-5 h-5 text-green-400" />
+          <span className="text-sm font-medium">{toastMessage}</span>
+        </div>
+      )}
     </>
   );
 }
