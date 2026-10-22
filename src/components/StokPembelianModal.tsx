@@ -33,7 +33,7 @@ export const StokPembelianModal: React.FC<StokPembelianModalProps> = ({
   const [customAlat, setCustomAlat] = useState<string>('');
   const [merkType, setMerkType] = useState<string>('');
   const [status, setStatus] = useState<'Stok' | 'Beli Baru'>('Stok');
-  const [kondisiAlat, setKondisiAlat] = useState<'Baru' | 'Rusak'>('Baru');
+  const [kondisiAlat, setKondisiAlat] = useState<'Baru' | 'Layak' | 'Rusak'>('Baru');
   const [jumlah, setJumlah] = useState<number>(1);
   const [tanggal, setTanggal] = useState<string>('');
   const [keterangan, setKeterangan] = useState<string>('');
@@ -57,7 +57,13 @@ export const StokPembelianModal: React.FC<StokPembelianModalProps> = ({
         setCustomAlat('');
         setMerkType(itemToEdit.merkType || '');
         setStatus(itemToEdit.status || 'Stok');
-        setKondisiAlat(itemToEdit.kondisiAlat || 'Baru');
+        setKondisiAlat(
+          itemToEdit.kondisiAlat === 'Rusak'
+            ? 'Rusak'
+            : itemToEdit.kondisiAlat === 'Baru'
+            ? 'Baru'
+            : 'Layak'
+        );
         setJumlah(itemToEdit.jumlah || 1);
         setTanggal(itemToEdit.tanggal || todayFormatted);
         setKeterangan(itemToEdit.keterangan || '');
@@ -329,11 +335,12 @@ export const StokPembelianModal: React.FC<StokPembelianModalProps> = ({
               </label>
               <select
                 value={kondisiAlat}
-                onChange={(e) => setKondisiAlat(e.target.value as 'Baru' | 'Rusak')}
+                onChange={(e) => setKondisiAlat(e.target.value as 'Baru' | 'Layak' | 'Rusak')}
                 required
                 className="w-full border border-slate-300 rounded-xl py-1.5 px-3 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-emerald-400 focus:border-emerald-500 outline-none transition cursor-pointer shadow-2xs"
               >
                 <option value="Baru">Baru (Kondisi Prima & Normal)</option>
+                <option value="Layak">Layak (Kondisi 50%)</option>
                 <option value="Rusak">Rusak (Perlu Perbaikan / Servis)</option>
               </select>
             </div>

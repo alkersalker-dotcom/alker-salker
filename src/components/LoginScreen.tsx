@@ -14,6 +14,8 @@ import {
   X,
   Sparkles,
   CheckCircle2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { MASTER_TEKNISI } from '../data/initialData';
 import { UserSession } from '../types/inventory';
@@ -27,6 +29,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [selectedTeknisi, setSelectedTeknisi] = useState<string>('');
   const [manualTeknisi, setManualTeknisi] = useState<string>('');
   const [adminPassword, setAdminPassword] = useState<string>('');
+  const [showAdminPassword, setShowAdminPassword] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showPwaModal, setShowPwaModal] = useState<boolean>(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -78,6 +81,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setSelectedTeknisi(unit === 'ADMIN' ? 'ADMIN' : '');
     setManualTeknisi('');
     setAdminPassword('');
+    setShowAdminPassword(false);
     setErrorMessage('');
   };
 
@@ -310,7 +314,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 </div>
                 <div className="relative">
                   <input
-                    type="password"
+                    type={showAdminPassword ? 'text' : 'password'}
                     placeholder="Masukkan Password Admin (ADMIN123)"
                     value={adminPassword}
                     onChange={(e) => {
@@ -318,11 +322,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                       setErrorMessage('');
                     }}
                     required
-                    className="w-full border border-slate-300 rounded-xl py-2.5 px-3.5 text-xs sm:text-[13px] font-medium text-slate-800 bg-white shadow-2xs focus:ring-2 focus:ring-indigo-400 focus:border-indigo-500 outline-none"
+                    className="w-full border border-slate-300 rounded-xl py-2.5 pl-3.5 pr-10 text-xs sm:text-[13px] font-medium text-slate-800 bg-white shadow-2xs focus:ring-2 focus:ring-indigo-400 focus:border-indigo-500 outline-none transition"
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="w-4 h-4 text-slate-400" />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-indigo-600 focus:outline-none transition cursor-pointer"
+                    title={showAdminPassword ? 'Sembunyikan password' : 'Lihat teks password'}
+                    aria-label={showAdminPassword ? 'Sembunyikan password' : 'Lihat teks password'}
+                  >
+                    {showAdminPassword ? (
+                      <EyeOff className="w-4 h-4 text-indigo-600" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                    )}
+                  </button>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">Gunakan password: <b>ADMIN123</b></p>
               </div>

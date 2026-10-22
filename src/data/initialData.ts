@@ -1,4 +1,4 @@
-import { AlkerItem, InventoryItem, Technician, Transaction, StokPembelianItem } from '../types/inventory';
+import { AlkerItem, InventoryItem, Technician, Transaction, StokPembelianItem, RekapStokAlkerItem } from '../types/inventory';
 import * as XLSX from 'xlsx';
 
 export const MASTER_TEKNISI: Technician[] = [
@@ -282,10 +282,10 @@ export const INITIAL_STOK_PEMBELIAN_DATA: StokPembelianItem[] = [
     alatKerja: 'OPM',
     merkType: 'Tribrer APM-50',
     status: 'Stok',
-    kondisiAlat: 'Baru',
+    kondisiAlat: 'Layak',
     jumlah: 8,
     tanggal: '18/10/2026',
-    keterangan: 'Stok siap distribusi ke teknisi lapangan',
+    keterangan: 'Kondisi 50% siap pakai lapangan, kalibrasi normal',
     updatedAt: '18/10/2026 11:00',
     createdAtTime: Date.now() - 3600000 * 24 * 3,
   },
@@ -413,3 +413,227 @@ export function exportStokPembelianToExcel(data: StokPembelianItem[]) {
   const todayStr = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(workbook, `Laporan_Stok_Pembelian_Alker_${todayStr}.xlsx`);
 }
+
+export const INITIAL_REKAP_STOK_DATA: RekapStokAlkerItem[] = [
+  {
+    id: 'rekap-1',
+    alatKerja: 'SPLICER',
+    merkType: 'FUJIKURA 70S+',
+    stokGudang: 8,
+    beliBaru: 4,
+    baru: 4,
+    layak: 7,
+    rusak: 1,
+    total: 12,
+    keterangan: 'Alat ukur dan sambung fiber optic inti',
+    updatedAt: '21/10/2026 14:00',
+    createdAtTime: Date.now() - 3600000 * 24 * 10,
+  },
+  {
+    id: 'rekap-2',
+    alatKerja: 'SPLICER',
+    merkType: 'ILSINTECH SWIFT K11',
+    stokGudang: 5,
+    beliBaru: 2,
+    baru: 2,
+    layak: 5,
+    rusak: 0,
+    total: 7,
+    keterangan: 'Unit operasional STO Bogor & Cibinong',
+    updatedAt: '21/10/2026 13:45',
+    createdAtTime: Date.now() - 3600000 * 24 * 9,
+  },
+  {
+    id: 'rekap-3',
+    alatKerja: 'DROPCORE STRIPPER',
+    merkType: 'CFS-2 DUAL HOLE',
+    stokGudang: 25,
+    beliBaru: 10,
+    baru: 10,
+    layak: 22,
+    rusak: 3,
+    total: 35,
+    keterangan: 'Kupas kulit kabel dropcore dan coating FO',
+    updatedAt: '21/10/2026 11:30',
+    createdAtTime: Date.now() - 3600000 * 24 * 8,
+  },
+  {
+    id: 'rekap-4',
+    alatKerja: 'TOOLKIT FO (Streper)',
+    merkType: 'PROSKIT FIBER OPTIC SET',
+    stokGudang: 14,
+    beliBaru: 6,
+    baru: 6,
+    layak: 12,
+    rusak: 2,
+    total: 20,
+    keterangan: 'Perlengkapan komplit teknisi lapangan',
+    updatedAt: '21/10/2026 10:15',
+    createdAtTime: Date.now() - 3600000 * 24 * 7,
+  },
+  {
+    id: 'rekap-5',
+    alatKerja: 'CLEAVER',
+    merkType: 'FUJIKURA CT-30 HIGH PRECISION',
+    stokGudang: 10,
+    beliBaru: 5,
+    baru: 5,
+    layak: 9,
+    rusak: 1,
+    total: 15,
+    keterangan: 'Pemotong core presisi tinggi 90 derajat',
+    updatedAt: '20/10/2026 16:20',
+    createdAtTime: Date.now() - 3600000 * 24 * 6,
+  },
+  {
+    id: 'rekap-6',
+    alatKerja: 'OPM',
+    merkType: 'JOINWIT JW3208 OPTICAL POWER METER',
+    stokGudang: 18,
+    beliBaru: 6,
+    baru: 6,
+    layak: 16,
+    rusak: 2,
+    total: 24,
+    keterangan: 'Kalibrasi daya sinyal redaman dBm',
+    updatedAt: '20/10/2026 15:10',
+    createdAtTime: Date.now() - 3600000 * 24 * 5,
+  },
+  {
+    id: 'rekap-7',
+    alatKerja: 'SENTER',
+    merkType: 'VFL 30MW VISUAL FAULT LOCATOR',
+    stokGudang: 20,
+    beliBaru: 8,
+    baru: 8,
+    layak: 18,
+    rusak: 2,
+    total: 28,
+    keterangan: 'Deteksi kelurusan & tekukan kabel optik',
+    updatedAt: '20/10/2026 14:00',
+    createdAtTime: Date.now() - 3600000 * 24 * 4,
+  },
+  {
+    id: 'rekap-8',
+    alatKerja: 'LAN TESTER',
+    merkType: 'NOYAFA NF-468 RJ45 RJ11',
+    stokGudang: 15,
+    beliBaru: 5,
+    baru: 5,
+    layak: 14,
+    rusak: 1,
+    total: 20,
+    keterangan: 'Pengecekan kontinuitas pin kabel UTP',
+    updatedAt: '19/10/2026 11:20',
+    createdAtTime: Date.now() - 3600000 * 24 * 3,
+  },
+  {
+    id: 'rekap-9',
+    alatKerja: 'TANGGA 5,1',
+    merkType: 'KRISBOW TELESKOPIK 5.1M',
+    stokGudang: 12,
+    beliBaru: 3,
+    baru: 3,
+    layak: 11,
+    rusak: 1,
+    total: 15,
+    keterangan: 'Tangga tarik tiang ODP / tiang Telkom',
+    updatedAt: '19/10/2026 09:30',
+    createdAtTime: Date.now() - 3600000 * 24 * 2,
+  },
+  {
+    id: 'rekap-10',
+    alatKerja: 'BODY HARNES',
+    merkType: 'PETZL NEWTON SAFETY FULL BODY',
+    stokGudang: 22,
+    beliBaru: 8,
+    baru: 8,
+    layak: 21,
+    rusak: 1,
+    total: 30,
+    keterangan: 'Standar K3 safety panjat tiang',
+    updatedAt: '18/10/2026 15:45',
+    createdAtTime: Date.now() - 3600000 * 24 * 1,
+  },
+];
+
+export function exportRekapStokAlkerToExcel(data: RekapStokAlkerItem[]) {
+  const wsData = [
+    ['LAPORAN REKAP STOK ALAT KERJA (ALKER)'],
+    ['Tanggal Unduh:', new Date().toLocaleDateString('id-ID'), 'Status:', 'Laporan Resmi'],
+    [],
+    [
+      'NO',
+      'ALAT KERJA',
+      'MERK / TYPE',
+      'STOK GUDANG',
+      'BELI BARU',
+      'BARU',
+      'LAYAK',
+      'RUSAK',
+      'TOTAL',
+      'KETERANGAN',
+      'UPDATE TERAKHIR',
+    ],
+  ];
+
+  data.forEach((row, idx) => {
+    wsData.push([
+      (idx + 1).toString(),
+      row.alatKerja || '-',
+      row.merkType || '-',
+      (row.stokGudang || 0).toString(),
+      (row.beliBaru || 0).toString(),
+      (row.baru || 0).toString(),
+      (row.layak || 0).toString(),
+      (row.rusak || 0).toString(),
+      (row.total || 0).toString(),
+      row.keterangan || '-',
+      row.updatedAt || '-',
+    ]);
+  });
+
+  // Calculate totals
+  const totalStokGudang = data.reduce((acc, r) => acc + (r.stokGudang || 0), 0);
+  const totalBeliBaru = data.reduce((acc, r) => acc + (r.beliBaru || 0), 0);
+  const totalBaru = data.reduce((acc, r) => acc + (r.baru || 0), 0);
+  const totalLayak = data.reduce((acc, r) => acc + (r.layak || 0), 0);
+  const totalRusak = data.reduce((acc, r) => acc + (r.rusak || 0), 0);
+  const grandTotal = data.reduce((acc, r) => acc + (r.total || 0), 0);
+
+  wsData.push([]);
+  wsData.push([
+    'TOTAL',
+    '-',
+    '-',
+    totalStokGudang.toString(),
+    totalBeliBaru.toString(),
+    totalBaru.toString(),
+    totalLayak.toString(),
+    totalRusak.toString(),
+    grandTotal.toString(),
+    'TOTAL KESELURUHAN',
+    '-',
+  ]);
+
+  const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+  worksheet['!cols'] = [
+    { wch: 6 },
+    { wch: 24 },
+    { wch: 30 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 36 },
+    { wch: 20 },
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Stok Alker');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(workbook, `Laporan_Rekap_Stok_Alker_${todayStr}.xlsx`);
+}
+

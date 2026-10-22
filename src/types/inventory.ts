@@ -1,11 +1,27 @@
 export type TransactionType = 'MASUK' | 'KELUAR';
 
+export interface RekapStokAlkerItem {
+  id: string;
+  alatKerja: string;
+  merkType: string;
+  stokGudang: number;
+  beliBaru: number;
+  baru: number;
+  layak: number;
+  rusak: number;
+  total: number;
+  keterangan?: string;
+  updatedAt: string;
+  createdAtTime: number;
+}
+
+
 export interface StokPembelianItem {
   id: string;
   alatKerja: string;
   merkType: string;
   status: 'Stok' | 'Beli Baru';
-  kondisiAlat: 'Baru' | 'Rusak';
+  kondisiAlat: 'Baru' | 'Layak' | 'Rusak' | 'Layak (Kondisi 50%)';
   jumlah: number;
   tanggal: string;
   keterangan?: string;

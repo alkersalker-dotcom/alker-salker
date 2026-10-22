@@ -54,6 +54,9 @@ export const StokPembelianView: React.FC<StokPembelianViewProps> = ({
   const totalBaruQty = data
     .filter((d) => d.kondisiAlat === 'Baru')
     .reduce((acc, curr) => acc + (curr.jumlah || 0), 0);
+  const totalLayakQty = data
+    .filter((d) => d.kondisiAlat === 'Layak' || (d.kondisiAlat as string) === 'Layak (Kondisi 50%)')
+    .reduce((acc, curr) => acc + (curr.jumlah || 0), 0);
   const totalRusakQty = data
     .filter((d) => d.kondisiAlat === 'Rusak')
     .reduce((acc, curr) => acc + (curr.jumlah || 0), 0);
@@ -67,7 +70,11 @@ export const StokPembelianView: React.FC<StokPembelianViewProps> = ({
       (item.keterangan && item.keterangan.toLowerCase().includes(term));
 
     const matchesStatus = statusFilter === '' || item.status === statusFilter;
-    const matchesKondisi = kondisiFilter === '' || item.kondisiAlat === kondisiFilter;
+    const matchesKondisi =
+      kondisiFilter === '' ||
+      (kondisiFilter === 'Layak'
+        ? item.kondisiAlat === 'Layak' || (item.kondisiAlat as string) === 'Layak (Kondisi 50%)'
+        : item.kondisiAlat === kondisiFilter);
 
     return matchesSearch && matchesStatus && matchesKondisi;
   });
@@ -201,13 +208,17 @@ export const StokPembelianView: React.FC<StokPembelianViewProps> = ({
               <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
                 KONDISI ALAT KERJA
               </p>
-              <div className="flex items-baseline space-x-2 mt-0.5">
-                <span className="text-base sm:text-lg font-black text-emerald-600 leading-tight">
-                  {totalBaruQty} <span className="text-[9px] font-bold text-slate-500">Baru</span>
+              <div className="flex items-baseline space-x-1.5 mt-0.5">
+                <span className="text-sm sm:text-base font-black text-emerald-600 leading-tight">
+                  {totalBaruQty} <span className="text-[8.5px] font-bold text-slate-500">Baru</span>
                 </span>
                 <span className="text-slate-300">/</span>
-                <span className="text-base sm:text-lg font-black text-rose-600 leading-tight">
-                  {totalRusakQty} <span className="text-[9px] font-bold text-slate-500">Rusak</span>
+                <span className="text-sm sm:text-base font-black text-amber-600 leading-tight">
+                  {totalLayakQty} <span className="text-[8.5px] font-bold text-slate-500">Layak (50%)</span>
+                </span>
+                <span className="text-slate-300">/</span>
+                <span className="text-sm sm:text-base font-black text-rose-600 leading-tight">
+                  {totalRusakQty} <span className="text-[8.5px] font-bold text-slate-500">Rusak</span>
                 </span>
               </div>
             </div>
@@ -251,7 +262,7 @@ export const StokPembelianView: React.FC<StokPembelianViewProps> = ({
             <option value="Beli Baru">Beli Baru</option>
           </select>
 
-          {/* Filter Kondisi: Baru | Rusak */}
+          {/* Filter Kondisi: Baru | Layak | Rusak */}
           <select
             value={kondisiFilter}
             onChange={(e) => setKondisiFilter(e.target.value)}
@@ -259,6 +270,7 @@ export const StokPembelianView: React.FC<StokPembelianViewProps> = ({
           >
             <option value="">Semua Kondisi</option>
             <option value="Baru">Kondisi Baru</option>
+            <option value="Layak">Layak (Kondisi 50%)</option>
             <option value="Rusak">Kondisi Rusak</option>
           </select>
 
@@ -418,12 +430,17 @@ export const StokPembelianView: React.FC<StokPembelianViewProps> = ({
                         )}
                       </td>
 
-                      {/* KONDISI ALAT KERJA (DROPDOWN / BARU / RUSAK) */}
+                      {/* KONDISI ALAT KERJA (DROPDOWN / BARU / LAYAK 50% / RUSAK) */}
                       <td className="px-2.5 py-1.5 whitespace-nowrap">
                         {item.kondisiAlat === 'Baru' ? (
                           <span className="px-2.5 py-0.5 text-[9.5px] font-black rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 flex items-center gap-1 w-max">
                             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                             <span>Baru</span>
+                          </span>
+                        ) : item.kondisiAlat === 'Layak' || (item.kondisiAlat as string) === 'Layak (Kondisi 50%)' ? (
+                          <span className="px-2.5 py-0.5 text-[9.5px] font-black rounded-full bg-amber-50 text-amber-700 border border-amber-300 flex items-center gap-1 w-max">
+                            <CheckCircle2 className="w-3 h-3 text-amber-500" />
+                            <span>Layak (50%)</span>
                           </span>
                         ) : (
                           <span className="px-2.5 py-0.5 text-[9.5px] font-black rounded-full bg-rose-50 text-rose-700 border border-rose-300 flex items-center gap-1 w-max">

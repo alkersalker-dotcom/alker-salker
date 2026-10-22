@@ -22,44 +22,66 @@ import {
   ShieldAlert,
   Lock,
   ShoppingBag,
+  ClipboardList,
+  RefreshCw,
+  Cloud,
+  CloudOff,
 } from 'lucide-react';
-import { AlkerItem, UserSession, StokPembelianItem } from '../types/inventory';
+import { AlkerItem, UserSession, StokPembelianItem, RekapStokAlkerItem } from '../types/inventory';
 import { exportAlkerToExcel } from '../data/initialData';
 import { createToolEvidenceSvg } from '../utils/photoEvidence';
 import { StokPembelianView } from './StokPembelianView';
 import { StokPembelianModal } from './StokPembelianModal';
+import { RekapStokAlkerView } from './RekapStokAlkerView';
+import { RekapStokAlkerModal } from './RekapStokAlkerModal';
 
 interface AlkerDashboardProps {
   currentUser: UserSession;
   alkerData: AlkerItem[];
   stokData: StokPembelianItem[];
+  rekapData: RekapStokAlkerItem[];
   onOpenAddModal: () => void;
   onEditItem: (item: AlkerItem) => void;
   onDeleteItem: (id: string) => void;
   onUpdateItemFoto: (id: string, fotoBase64: string) => void;
   onSaveStokItem: (item: StokPembelianItem) => void;
   onDeleteStokItem: (id: string) => void;
+  onSaveRekapItem: (item: RekapStokAlkerItem) => void;
+  onDeleteRekapItem: (id: string) => void;
   onLogout: () => void;
+  syncStatus?: 'connected' | 'syncing' | 'offline';
+  lastSyncedTime?: string;
+  onManualSync?: () => void;
 }
 
 export const AlkerDashboard: React.FC<AlkerDashboardProps> = ({
   currentUser,
   alkerData,
   stokData,
+  rekapData,
   onOpenAddModal,
   onEditItem,
   onDeleteItem,
   onUpdateItemFoto,
   onSaveStokItem,
   onDeleteStokItem,
+  onSaveRekapItem,
+  onDeleteRekapItem,
   onLogout,
+  syncStatus = 'connected',
+  lastSyncedTime,
+  onManualSync,
 }) => {
-  // Main Tab: 'MONITORING' | 'STOK_PEMBELIAN'
-  const [activeMainTab, setActiveMainTab] = useState<'MONITORING' | 'STOK_PEMBELIAN'>('MONITORING');
+  // Main Tab: 'MONITORING' | 'STOK_PEMBELIAN' | 'REKAP_STOK'
+  const [activeMainTab, setActiveMainTab] = useState<'MONITORING' | 'STOK_PEMBELIAN' | 'REKAP_STOK'>('MONITORING');
 
   // Stok Modal State
   const [isStokModalOpen, setIsStokModalOpen] = useState<boolean>(false);
   const [stokItemToEdit, setStokItemToEdit] = useState<StokPembelianItem | null>(null);
+
+  // Rekap Stok Modal State
+  const [isRekapModalOpen, setIsRekapModalOpen] = useState<boolean>(false);
+  const [rekapItemToEdit, setRekapItemToEdit] = useState<RekapStokAlkerItem | null>(null);
 
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [posisiFilter, setPosisiFilter] = useState<string>('');
@@ -169,6 +191,21 @@ export const AlkerDashboard: React.FC<AlkerDashboardProps> = ({
     setIsStokModalOpen(true);
   };
 
+  const handleOpenAddRekap = () => {
+    setRekapItemToEdit(null);
+    setIsRekapModalOpen(true);
+  };
+
+  const handleOpenEditRekap = (item: RekapStokAlkerItem) => {
+    if (!currentUser.isAdmin) {
+      setAttemptedAction('Edit');
+      setShowRestrictedModal(true);
+      return;
+    }
+    setRekapItemToEdit(item);
+    setIsRekapModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col text-slate-800">
       {/* 2. Top Header Navigation Bar ("Posisi Judul dibuatkan Semanis Mungkin, Nama yang login terlihat jelas") */}
@@ -221,11 +258,70 @@ export const AlkerDashboard: React.FC<AlkerDashboardProps> = ({
                   <ShoppingBag className="w-3.5 h-3.5" />
                   <span>Stok & Pembelian</span>
                 </button>
+
+                {/* 3. REKAP STOK ALKER TAB BARU */}
+                <button
+                  type="button"
+                  onClick={() => setActiveMainTab('REKAP_STOK')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                    activeMainTab === 'REKAP_STOK'
+                      ? 'bg-gradient-to-r from-amber-300 via-orange-400 to-amber-400 text-slate-950 shadow-xs font-black'
+                      : 'text-indigo-200 hover:text-white'
+                  }`}
+                >
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  <span>Rekap Stok Alker</span>
+                </button>
               </div>
 
-              <div className="hidden lg:flex items-center space-x-1.5 bg-indigo-950/60 px-2.5 py-1 rounded-full text-[10px] text-emerald-300 border border-emerald-500/40 shadow-inner">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="font-semibold">Cloud Connected</span>
+              {/* Multi-Device Cloud Sync Indicator & Force Sync Button */}
+              <div className="flex items-center space-x-1.5">
+                <button
+                  type="button"
+                  onClick={onManualSync}
+                  title={`Status Penyimpanan: ${
+                    syncStatus === 'connected'
+                      ? 'Tersambung ke Database Terpusat (Data sama di semua perangkat HP/Laptop). Klik untuk sinkronkan sekarang.'
+                      : syncStatus === 'syncing'
+                      ? 'Sedang menyinkronkan data antar-perangkat...'
+                      : 'Mode Offline (Data tersimpan di perangkat ini). Klik untuk menghubungkan ulang.'
+                  }${lastSyncedTime ? ` | Terakhir: ${lastSyncedTime}` : ''}`}
+                  className={`flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[10px] font-semibold border transition shadow-inner cursor-pointer ${
+                    syncStatus === 'connected'
+                      ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/80'
+                      : syncStatus === 'syncing'
+                      ? 'bg-amber-950/70 text-amber-300 border-amber-500/40 hover:bg-amber-900/80'
+                      : 'bg-slate-900/80 text-slate-300 border-slate-600/50 hover:bg-slate-800'
+                  }`}
+                >
+                  {syncStatus === 'connected' ? (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <Cloud className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <span className="hidden sm:inline">Multi-Device Aktif</span>
+                      <span className="sm:hidden">Sync OK</span>
+                    </>
+                  ) : syncStatus === 'syncing' ? (
+                    <>
+                      <RefreshCw className="w-3 h-3 text-amber-400 animate-spin shrink-0" />
+                      <span className="hidden sm:inline">Menyinkronkan...</span>
+                      <span className="sm:hidden">Sync...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CloudOff className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span className="hidden sm:inline">Offline (Lokal)</span>
+                      <span className="sm:hidden">Offline</span>
+                    </>
+                  )}
+                  {onManualSync && (
+                    <RefreshCw
+                      className={`w-2.5 h-2.5 ml-0.5 opacity-70 hover:opacity-100 ${
+                        syncStatus === 'syncing' ? 'animate-spin' : ''
+                      }`}
+                    />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -286,19 +382,27 @@ export const AlkerDashboard: React.FC<AlkerDashboardProps> = ({
                 onClick={() => {
                   if (activeMainTab === 'MONITORING') {
                     onOpenAddModal();
-                  } else {
+                  } else if (activeMainTab === 'STOK_PEMBELIAN') {
                     handleOpenAddStok();
+                  } else {
+                    handleOpenAddRekap();
                   }
                 }}
                 className={`text-white font-bold px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl shadow-md transition flex items-center space-x-1 text-xs border cursor-pointer ${
                   activeMainTab === 'MONITORING'
                     ? 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 border-emerald-300/40'
-                    : 'bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 border-teal-300/40'
+                    : activeMainTab === 'STOK_PEMBELIAN'
+                    ? 'bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 border-teal-300/40'
+                    : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 border-amber-300/40'
                 }`}
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>
-                  {activeMainTab === 'MONITORING' ? 'Tambah Data' : 'Input Data Stok & Beli'}
+                  {activeMainTab === 'MONITORING'
+                    ? 'Tambah Data'
+                    : activeMainTab === 'STOK_PEMBELIAN'
+                    ? 'Input Data Stok & Beli'
+                    : 'Input Rekap Alker'}
                 </span>
               </button>
             </div>
@@ -704,13 +808,27 @@ export const AlkerDashboard: React.FC<AlkerDashboardProps> = ({
           </div>
         </div>
           </>
-        ) : (
+        ) : activeMainTab === 'STOK_PEMBELIAN' ? (
           <StokPembelianView
             currentUser={currentUser}
             data={stokData}
             onOpenAddModal={handleOpenAddStok}
             onEditItem={handleOpenEditStok}
             onDeleteItem={onDeleteStokItem}
+            onShowRestrictedModal={() => {
+              setAttemptedAction('Edit');
+              setShowRestrictedModal(true);
+            }}
+          />
+        ) : (
+          <RekapStokAlkerView
+            currentUser={currentUser}
+            data={rekapData}
+            alkerData={alkerData}
+            stokData={stokData}
+            onOpenAddModal={handleOpenAddRekap}
+            onEditItem={handleOpenEditRekap}
+            onDeleteItem={onDeleteRekapItem}
             onShowRestrictedModal={() => {
               setAttemptedAction('Edit');
               setShowRestrictedModal(true);
@@ -960,6 +1078,18 @@ export const AlkerDashboard: React.FC<AlkerDashboardProps> = ({
         onSave={(savedItem) => {
           onSaveStokItem(savedItem);
           setIsStokModalOpen(false);
+        }}
+      />
+
+      {/* MODAL INPUT & EDIT REKAP STOK ALKER */}
+      <RekapStokAlkerModal
+        isOpen={isRekapModalOpen}
+        itemToEdit={rekapItemToEdit}
+        currentUser={currentUser}
+        onClose={() => setIsRekapModalOpen(false)}
+        onSave={(savedItem) => {
+          onSaveRekapItem(savedItem);
+          setIsRekapModalOpen(false);
         }}
       />
     </div>
